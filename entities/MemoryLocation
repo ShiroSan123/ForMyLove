@@ -1,0 +1,56 @@
+{
+  "name": "MemoryLocation",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Memory title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Memory description"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the memory"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "Location latitude"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "Location longitude"
+    },
+    "location_name": {
+      "type": "string",
+      "description": "Name of the location"
+    },
+    "icon_color": {
+      "type": "string",
+      "enum": [
+        "rose",
+        "amber",
+        "purple",
+        "blue",
+        "teal",
+        "red"
+      ],
+      "default": "rose",
+      "description": "Color theme for the memory"
+    },
+    "photos": {
+      "type": "array",
+      "description": "Photo URLs for this memory",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "title",
+    "latitude",
+    "longitude"
+  ]
+}
