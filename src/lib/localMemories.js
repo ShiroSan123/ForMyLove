@@ -1,3 +1,5 @@
+import bundledMemories from "@/data/memories.json";
+
 const MEMORY_STORAGE_KEY = "for_my_love_memory_locations";
 
 const getStorage = () => {
@@ -25,6 +27,47 @@ const writeAll = (items) => {
   storage.setItem(MEMORY_STORAGE_KEY, JSON.stringify(items));
 };
 
+const normalizeMemory = (item, index = 0) => {
+  const now = new Date().toISOString();
+  const latitude = toNumber(item?.latitude);
+  const longitude = toNumber(item?.longitude);
+
+  return {
+    id: item?.id || `seed-${index}-${Date.now()}`,
+    created_date: item?.created_date || now,
+    updated_date: item?.updated_date || item?.created_date || now,
+    title: item?.title || "",
+    description: item?.description || "",
+    date: item?.date || "",
+    location_name: item?.location_name || "",
+    latitude: latitude ?? 0,
+    longitude: longitude ?? 0,
+    icon_color: item?.icon_color || "rose",
+    photos: Array.isArray(item?.photos) ? item.photos : [],
+  };
+};
+
+const getBundledMemories = () =>
+  (Array.isArray(bundledMemories) ? bundledMemories : []).map((item, index) =>
+    normalizeMemory(item, index),
+  );
+
+const ensureInitialized = () => {
+  const storage = getStorage();
+  if (!storage) return [];
+
+  const existing = readAll();
+  if (existing.length > 0) return existing;
+
+  const seeded = getBundledMemories();
+  if (seeded.length > 0) {
+    writeAll(seeded);
+    return seeded;
+  }
+
+  return [];
+};
+
 const sortByCreatedDateDesc = (items) =>
   [...items].sort((a, b) => {
     const aDate = new Date(a.created_date || 0).getTime();
@@ -41,7 +84,7 @@ export const memoryLocationStore = {
   storageKey: MEMORY_STORAGE_KEY,
 
   async list(orderBy) {
-    const items = readAll();
+    const items = ensureInitialized();
     if (orderBy === "-created_date") {
       return sortByCreatedDateDesc(items);
     }
@@ -49,6 +92,7 @@ export const memoryLocationStore = {
   },
 
   async create(payload) {
+    const baseItems = ensureInitialized();
     const now = new Date().toISOString();
     const latitude = toNumber(payload.latitude);
     const longitude = toNumber(payload.longitude);
@@ -71,14 +115,14 @@ export const memoryLocationStore = {
       photos: Array.isArray(payload.photos) ? payload.photos : [],
     };
 
-    const items = readAll();
+    const items = [...baseItems];
     items.push(item);
     writeAll(items);
     return item;
   },
 
   async update(id, payload) {
-    const items = readAll();
+    const items = ensureInitialized();
     const itemIndex = items.findIndex((item) => item.id === id);
     if (itemIndex < 0) {
       throw new Error("Memory not found");
@@ -110,7 +154,7 @@ export const memoryLocationStore = {
   },
 
   async remove(id) {
-    const items = readAll();
+    const items = ensureInitialized();
     const next = items.filter((item) => item.id !== id);
     writeAll(next);
     return { success: true };
@@ -119,5 +163,22 @@ export const memoryLocationStore = {
   async clear() {
     writeAll([]);
     return { success: true };
+  },
+
+  async exportForDeploy() {
+    const items = await this.list("-created_date");
+    return items.map((item) => ({
+      id: item.id,
+      created_date: item.created_date,
+      updated_date: item.updated_date,
+      title: item.title || "",
+      description: item.description || "",
+      date: item.date || "",
+      location_name: item.location_name || "",
+      latitude: Number(item.latitude),
+      longitude: Number(item.longitude),
+      icon_color: item.icon_color || "rose",
+      photos: Array.isArray(item.photos) ? item.photos : [],
+    }));
   },
 };

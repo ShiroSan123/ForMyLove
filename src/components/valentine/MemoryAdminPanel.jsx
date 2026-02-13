@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Settings2, Pencil, Trash2, Save, X } from "lucide-react";
+import { Settings2, Pencil, Trash2, Save, X, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -92,6 +92,26 @@ export default function MemoryAdminPanel({ memories, onChanged }) {
     }
   };
 
+  const exportForDeploy = async () => {
+    try {
+      const items = await memoryLocationStore.exportForDeploy();
+      const blob = new Blob([JSON.stringify(items, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "memories.json";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Exported memories.json for deploy");
+    } catch {
+      toast.error("Failed to export memories");
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto mt-8">
       <Button
@@ -116,16 +136,32 @@ export default function MemoryAdminPanel({ memories, onChanged }) {
               <p className="text-sm text-rose-700">
                 Memories in local storage: <strong>{memories.length}</strong>
               </p>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={clearAllMemories}
-                disabled={memories.length === 0}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Clear All
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={exportForDeploy}
+                  disabled={memories.length === 0}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export for Deploy
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={clearAllMemories}
+                  disabled={memories.length === 0}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Clear All
+                </Button>
+              </div>
             </div>
+            <p className="text-xs text-rose-500 mb-4">
+              Deploy flow: export and replace{" "}
+              <code className="font-mono">src/data/memories.json</code> with the
+              downloaded file, then redeploy.
+            </p>
 
             {memories.length === 0 && (
               <p className="text-sm text-rose-500">No memories yet.</p>
@@ -298,4 +334,3 @@ export default function MemoryAdminPanel({ memories, onChanged }) {
     </div>
   );
 }
-
