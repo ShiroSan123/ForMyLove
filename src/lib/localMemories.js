@@ -8,12 +8,30 @@ const getStorage = () => {
   return window.localStorage;
 };
 
-const readAll = () => {
+const safeStorageGet = (key) => {
   const storage = getStorage();
-  if (!storage) return [];
-
+  if (!storage) return null;
   try {
-    const raw = storage.getItem(MEMORY_STORAGE_KEY);
+    return storage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const safeStorageSet = (key, value) => {
+  const storage = getStorage();
+  if (!storage) return false;
+  try {
+    storage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const readAll = () => {
+  try {
+    const raw = safeStorageGet(MEMORY_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -23,9 +41,7 @@ const readAll = () => {
 };
 
 const writeAll = (items) => {
-  const storage = getStorage();
-  if (!storage) return;
-  storage.setItem(MEMORY_STORAGE_KEY, JSON.stringify(items));
+  return safeStorageSet(MEMORY_STORAGE_KEY, JSON.stringify(items));
 };
 
 const getBundledSeedVersion = () => JSON.stringify(bundledMemories || []);
@@ -57,16 +73,17 @@ const getBundledMemories = () =>
 
 const ensureInitialized = () => {
   const storage = getStorage();
-  if (!storage) return [];
-
   const seeded = getBundledMemories();
+  if (!storage) return seeded;
+
   const currentSeedVersion = getBundledSeedVersion();
-  const storedSeedVersion = storage.getItem(MEMORY_SEED_VERSION_KEY);
+  const storedSeedVersion = safeStorageGet(MEMORY_SEED_VERSION_KEY);
 
   // If memories.json changed, force local data to match it.
   if (seeded.length > 0 && storedSeedVersion !== currentSeedVersion) {
-    writeAll(seeded);
-    storage.setItem(MEMORY_SEED_VERSION_KEY, currentSeedVersion);
+    const wrote = writeAll(seeded);
+    if (!wrote) return seeded;
+    safeStorageSet(MEMORY_SEED_VERSION_KEY, currentSeedVersion);
     return seeded;
   }
 
@@ -74,8 +91,9 @@ const ensureInitialized = () => {
   if (existing.length > 0) return existing;
 
   if (seeded.length > 0) {
-    writeAll(seeded);
-    storage.setItem(MEMORY_SEED_VERSION_KEY, currentSeedVersion);
+    const wrote = writeAll(seeded);
+    if (!wrote) return seeded;
+    safeStorageSet(MEMORY_SEED_VERSION_KEY, currentSeedVersion);
     return seeded;
   }
 
