@@ -1,6 +1,7 @@
 import bundledMemories from "@/data/memories.json";
 
 const MEMORY_STORAGE_KEY = "for_my_love_memory_locations";
+const MEMORY_SEED_VERSION_KEY = "for_my_love_memory_seed_version";
 
 const getStorage = () => {
   if (typeof window === "undefined") return null;
@@ -26,6 +27,8 @@ const writeAll = (items) => {
   if (!storage) return;
   storage.setItem(MEMORY_STORAGE_KEY, JSON.stringify(items));
 };
+
+const getBundledSeedVersion = () => JSON.stringify(bundledMemories || []);
 
 const normalizeMemory = (item, index = 0) => {
   const now = new Date().toISOString();
@@ -56,12 +59,23 @@ const ensureInitialized = () => {
   const storage = getStorage();
   if (!storage) return [];
 
+  const seeded = getBundledMemories();
+  const currentSeedVersion = getBundledSeedVersion();
+  const storedSeedVersion = storage.getItem(MEMORY_SEED_VERSION_KEY);
+
+  // If memories.json changed, force local data to match it.
+  if (seeded.length > 0 && storedSeedVersion !== currentSeedVersion) {
+    writeAll(seeded);
+    storage.setItem(MEMORY_SEED_VERSION_KEY, currentSeedVersion);
+    return seeded;
+  }
+
   const existing = readAll();
   if (existing.length > 0) return existing;
 
-  const seeded = getBundledMemories();
   if (seeded.length > 0) {
     writeAll(seeded);
+    storage.setItem(MEMORY_SEED_VERSION_KEY, currentSeedVersion);
     return seeded;
   }
 
